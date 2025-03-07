@@ -1,14 +1,21 @@
-# Proyecto Opengl
+# Proyecto RC2dFlatland
 
-Proyecto fin de grado, ingenieria informática. Fork directo del proyecto de OpenGL.
+Proyecto simple para estudiar los fundamentos de Radiance Cascades. Fork directo del proyecto de OpenGL.
 
 ## Controles
 
+Ninguno
+
 ## Proceso
 
-- [ ] Setup inicial
+- [x] Setup inicial
+- [ ] Añadir buffers para multiples pasos de shaders
 
 ## Enlaces
+
+- Radiance Cascades: A Novel Approach to Calculating Global - <https://drive.google.com/file/d/1L6v1_7HY2X-LV3Ofb6oyTIxgEaP4LOI6/view>
+- LearnOpenGL - <https://learnopengl.com/>
+- Documentación OpenGL - <https://www.khronos.org/opengl/>
 
 ## Librerias necesarias para la compilación
 
@@ -17,20 +24,24 @@ Proyecto fin de grado, ingenieria informática. Fork directo del proyecto de Ope
 - glm <https://github.com/g-truc/glm>
 - STB_IMAGE <https://github.com/nothings/stb/blob/master/stb_image.h>
 
-# Opengl Project
+# RC2dFlatland project
 
-Final degree project, computer engineering. Direct fork from my OpenGL proyect.
+Simple project to study the basics of Radiance Cascade. Direct fork from my OpenGL proyect.
 
 ## Controls
 
+None
+
 ## Process
 
-- [ ] Initial Setup
+- [x] Initial Setup
+- [ ] Add buffers for multipass
 
 ## Links
 
-- <https://learnopengl.com/>
-- <https://www.khronos.org/opengl/>
+- Radiance Cascades: A Novel Approach to Calculating Global - <https://drive.google.com/file/d/1L6v1_7HY2X-LV3Ofb6oyTIxgEaP4LOI6/view>
+- LearnOpenGL - <https://learnopengl.com/>
+- OpenGL documentation - <https://www.khronos.org/opengl/>
 
 ## Libraries needed for compilation
 
