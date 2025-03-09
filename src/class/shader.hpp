@@ -11,6 +11,10 @@
 
 class Shader
 {
+private:
+    const char *vertexPath;
+    const char *fragmentPath;
+
 public:
     unsigned int ID;
 
@@ -18,6 +22,8 @@ public:
     // ------------------------------------------------------------------------
     Shader(const char *vertexPath, const char *fragmentPath)
     {
+        this->vertexPath = vertexPath;
+        this->fragmentPath = fragmentPath;
         // 1. retrieve the vertex/fragment source code from filePath
         std::string vertexCode;
         std::string fragmentCode;
@@ -112,6 +118,76 @@ public:
     {
         glDeleteProgram(ID);
     }
+    //-------------------------------------------------------------------------
+    void recompile()
+    {
+        glDeleteProgram(ID);
+        // Leer nuevamente los archivos de shader
+        std::string vertexCode;
+        std::string fragmentCode;
+        std::ifstream vShaderFile;
+        std::ifstream fShaderFile;
+
+        vShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+        fShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+
+        try
+        {
+            // Abrir archivos
+            vShaderFile.open(vertexPath, std::ios::in);
+            fShaderFile.open(fragmentPath, std::ios::in);
+            std::stringstream vShaderStream, fShaderStream;
+
+            // Leer contenido de los archivos en los streams
+            vShaderStream << vShaderFile.rdbuf();
+            fShaderStream << fShaderFile.rdbuf();
+
+            // Cerrar los archivos
+            vShaderFile.close();
+            fShaderFile.close();
+
+            // Convertir stream a string
+            vertexCode = vShaderStream.str();
+            fragmentCode = fShaderStream.str();
+        }
+        catch (std::ifstream::failure &e)
+        {
+            std::cout << "ERROR::SHADER::FILE_NOT_SUCCESSFULLY_READ: " << e.what() << std::endl;
+            return;
+        }
+
+        const char *vShaderCode = vertexCode.c_str();
+        const char *fShaderCode = fragmentCode.c_str();
+
+        // Compilar shaders
+        unsigned int vertex, fragment;
+
+        // Shader de vértices
+        vertex = glCreateShader(GL_VERTEX_SHADER);
+        glShaderSource(vertex, 1, &vShaderCode, NULL);
+        glCompileShader(vertex);
+        checkCompileErrors(vertex, "VERTEX");
+
+        // Shader de fragmentos
+        fragment = glCreateShader(GL_FRAGMENT_SHADER);
+        glShaderSource(fragment, 1, &fShaderCode, NULL);
+        glCompileShader(fragment);
+        checkCompileErrors(fragment, "FRAGMENT");
+
+        // Programa de shader
+        ID = glCreateProgram();
+        glAttachShader(ID, vertex);
+        glAttachShader(ID, fragment);
+        glLinkProgram(ID);
+        checkCompileErrors(ID, "PROGRAM");
+
+        // Eliminar los shaders que ya están vinculados
+        glDeleteShader(vertex);
+        glDeleteShader(fragment);
+
+        std::cout << "Shader recompiled successfully!" << std::endl;
+    }
+
     //-----------------------------------------------------------------
     // utility function for checking shader compilation/linking errors.
     // ------------------------------------------------------------------------

@@ -100,7 +100,7 @@ void screenPos_callback(GLFWwindow *window, int xpos, int ypos)
 // proceso que lee la entrada de teclas
 // ---------------------------------------------------------------------------------------------
 
-void processInput(GLFWwindow *window)
+void processInput(GLFWwindow *window, Shader *shader, Shader *shader2)
 {
     float cameraSpeed = 2.5f * deltaTime;
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -118,6 +118,11 @@ void processInput(GLFWwindow *window)
         camera.ProcessKeyboard(UP, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
         camera.ProcessKeyboard(DONW, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS)
+    {
+        shader->recompile();
+        shader2->recompile();
+    }
 }
 
 // ---------------------------------------------------------------------------------------------

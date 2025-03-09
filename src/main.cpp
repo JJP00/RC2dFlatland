@@ -128,7 +128,7 @@ int main(void)
 
         // input
         // -----
-        processInput(ventana);
+        processInput(ventana, &distaceProgram, &shaderProgram);
 
         // render
         // ------
