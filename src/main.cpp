@@ -187,6 +187,16 @@ unsigned int loadTexture(char const *path)
     return TextureId;
 }
 
+// ---------------------------------------------------------------------------------------------
+// dibujar pantalla
+// ---------------------------------------------------------------------------------------------
+
+void drawscreen(unsigned int VAO)
+{
+    glBindVertexArray(VAO);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+}
+
 int main(void)
 {
     /* Initialize the library */
@@ -231,6 +241,7 @@ int main(void)
 
     glEnable(GL_DEPTH_TEST);
 
+    Shader distaceProgram("../resources/vertex/shader.vert", "../resources/fragment/distance.frag");
     Shader shaderProgram("../resources/vertex/shader.vert", "../resources/fragment/shader.frag");
 
     float vertices[] = {
@@ -264,13 +275,34 @@ int main(void)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0); // vertice position
     glEnableVertexAttribArray(0);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+    // ---------------------------------------------------------------------------------------------
+    // Buffers para las pasadas
+    // ---------------------------------------------------------------------------------------------
+
+    unsigned int iChannel1, FBO;
+
+    glGenTextures(1, &iChannel1);
+    glBindTexture(GL_TEXTURE_2D, iChannel1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    glGenFramebuffers(1, &FBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, iChannel1, 0);
+
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
 
     while (!glfwWindowShouldClose(ventana))
     {
@@ -299,19 +331,36 @@ int main(void)
         else
             mouse = glm::vec3(lastX, -lastY, 0.0f);
 
-        shaderProgram.setVec3("iResolution", resolution);
-        // std::cout << "iResolution: " << resolution.x << " " << resolution.y << " " << resolution.z << std::endl;
-        shaderProgram.setFloat("iTime", currentFrame);
-        // std::cout << "iTime: " << currentFrame << std::endl;
-        shaderProgram.setFloat("iTimeDelta", deltaTime);
-        // std::cout << "iTimeDelta: " << deltaTime << std::endl;
-        shaderProgram.setVec3("iMouse", mouse);
-        // std::cout << "iMouse: " << mouse.x << " " << mouse.y << " " << mouse.z << std::endl;
+        // pass 1 - render distance field
+        glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+        glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
 
-        // render the cube
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, iChannel1);
+        distaceProgram.use();
+
+        distaceProgram.setVec3("iResolution", resolution);
+        distaceProgram.setFloat("iTime", currentFrame);
+        distaceProgram.setFloat("iTimeDelta", deltaTime);
+        distaceProgram.setVec3("iMouse", mouse);
+
+        drawscreen(VAO);
+
+        // pass 2 - render final image color pallete
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, iChannel1);
+
         shaderProgram.use();
-        glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+        shaderProgram.setVec3("iResolution", resolution);
+        shaderProgram.setFloat("iTime", currentFrame);
+        shaderProgram.setFloat("iTimeDelta", deltaTime);
+        shaderProgram.setVec3("iMouse", mouse);
+
+        drawscreen(VAO);
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
@@ -322,6 +371,10 @@ int main(void)
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
     glDeleteBuffers(1, &EBO);
+    glDeleteFramebuffers(1, &FBO);
+    distaceProgram.deleteProgram();
+    shaderProgram.deleteProgram();
+    glDeleteTextures(1, &iChannel1);
 
     glfwTerminate();
     return 0;
