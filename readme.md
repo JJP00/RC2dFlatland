@@ -4,11 +4,12 @@ Proyecto simple para estudiar los fundamentos de Radiance Cascades. Fork directo
 
 ## Controles
 
-Ninguno
+- R: recompila los shaders
 
 ## Proceso
 
 - [x] Setup inicial
+- [x] recompilación de shaders
 - [ ] Añadir buffers para multiples pasos de shaders
 
 ## Enlaces
@@ -30,11 +31,12 @@ Simple project to study the basics of Radiance Cascade. Direct fork from my Open
 
 ## Controls
 
-None
+- R: recompile the shaders
 
 ## Process
 
 - [x] Initial Setup
+- [x] Shader recompilation 
 - [ ] Add buffers for multipass
 
 ## Links
