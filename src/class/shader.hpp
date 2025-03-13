@@ -14,6 +14,7 @@ class Shader
 private:
     const char *vertexPath;
     const char *fragmentPath;
+    const char *commonPath;
 
 public:
     unsigned int ID;
@@ -24,6 +25,7 @@ public:
     {
         this->vertexPath = vertexPath;
         this->fragmentPath = fragmentPath;
+        this->commonPath = commonPath;
         // 1. retrieve the vertex/fragment source code from filePath
         std::string vertexCode;
         std::string fragmentCode;
@@ -136,30 +138,34 @@ public:
         // Leer nuevamente los archivos de shader
         std::string vertexCode;
         std::string fragmentCode;
+        std::string commonCode;
         std::ifstream vShaderFile;
         std::ifstream fShaderFile;
+        std::ifstream cShaderFile;
 
         vShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
         fShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+        cShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 
         try
         {
-            // Abrir archivos
+            // open files
             vShaderFile.open(vertexPath, std::ios::in);
             fShaderFile.open(fragmentPath, std::ios::in);
-            std::stringstream vShaderStream, fShaderStream;
-
-            // Leer contenido de los archivos en los streams
+            cShaderFile.open(commonPath, std::ios::in);
+            std::stringstream vShaderStream, fShaderStream, cShaderStream;
+            // read file's buffer contents into streams
             vShaderStream << vShaderFile.rdbuf();
             fShaderStream << fShaderFile.rdbuf();
-
-            // Cerrar los archivos
+            cShaderStream << cShaderFile.rdbuf();
+            // close file handlers
             vShaderFile.close();
             fShaderFile.close();
-
-            // Convertir stream a string
+            cShaderFile.close();
+            // convert stream into string
             vertexCode = vShaderStream.str();
             fragmentCode = fShaderStream.str();
+            commonCode = cShaderStream.str();
         }
         catch (std::ifstream::failure &e)
         {
@@ -167,8 +173,10 @@ public:
             return;
         }
 
+        std::string combinedFragmentCode = commonCode + "\n" + fragmentCode;
+
         const char *vShaderCode = vertexCode.c_str();
-        const char *fShaderCode = fragmentCode.c_str();
+        const char *fShaderCode = combinedFragmentCode.c_str();
 
         // Compilar shaders
         unsigned int vertex, fragment;

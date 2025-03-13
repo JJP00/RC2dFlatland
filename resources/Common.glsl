@@ -325,7 +325,7 @@ vec3 rot3D(vec3 p, vec3 axis, float angle) {
     return mix(dot(axis,p) * axis, p, cos(angle)) + cross(axis, p) * sin(angle);
 }
 
-vec3 palette ( float t) 
+vec3 palette(float t) 
 {
     vec3 a = vec3(0.5,0.5,0.5);
     vec3 b = vec3(0.5,0.5,0.5);

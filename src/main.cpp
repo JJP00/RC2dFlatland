@@ -54,8 +54,8 @@ int main(void)
 
     glEnable(GL_DEPTH_TEST);
 
-    Shader distaceProgram("../resources/vertex/shader.vert", "../resources/fragment/distance.frag", "../resources/shaders/Common.glsl");
-    Shader shaderProgram("../resources/vertex/shader.vert", "../resources/fragment/shader.frag", "../resources/shaders/Common.glsl");
+    Shader distaceProgram("../resources/vertex/shader.vert", "../resources/fragment/distance.frag", "../resources/Common.glsl");
+    Shader shaderProgram("../resources/vertex/shader.vert", "../resources/fragment/shader.frag", "../resources/Common.glsl");
 
     float vertices[] = {
         1.0f, 1.0f, 0.0f,   // top right
