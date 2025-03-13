@@ -9,8 +9,9 @@ Proyecto simple para estudiar los fundamentos de Radiance Cascades. Fork directo
 ## Proceso
 
 - [x] Setup inicial
-- [x] recompilación de shaders
-- [ ] Añadir buffers para multiples pasos de shaders
+- [x] Añadir buffers para multiples pasos de shaders
+- [x] Botton R para recompilar shader
+- [ ] Añadir un buffer CubeMap
 
 ## Enlaces
 
@@ -36,8 +37,9 @@ Simple project to study the basics of Radiance Cascade. Direct fork from my Open
 ## Process
 
 - [x] Initial Setup
-- [x] Shader recompilation 
-- [ ] Add buffers for multipass
+- [x] Add buffers for multipass
+- [x] R button to recompile shader
+- [ ] add a CubeMap buffer
 
 ## Links
 

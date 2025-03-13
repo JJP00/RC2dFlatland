@@ -1,42 +1,9 @@
-#version 330 core
 out vec4 FragColor;
 
 uniform vec3 iResolution;           // viewport resolution (in pixels)
 uniform float iTime;                // shader playback time (in seconds)
 uniform float iTimeDelta;           // render time (in seconds)
 uniform vec3 iMouse;                // mouse pixel coords. xy: current (if MLB down), zw: click
-
-float sdSphere(vec3 p, float s) {
-    return length(p) - s;
-}
-
-float sdBox(vec3 p, vec3 b) {
-    vec3 q = abs(p) - b;
-    return length(max(q,0.0)) + min(max(q.x, max(q.y,q.z)), 0.0);
-}
-
-float sdOctahedron(vec3 p, float s) {
-    p = abs(p);
-    return (p.x + p.y + p.z - s) * 0.57735027;
-}
-
-float smin(float a, float b, float k) {
-    float h = max(k-abs(a-b), 0.0) /k;
-    return min(a,b) - h*h*h*k*(1.0/6.0);
-}
-
-mat2 rot2D(float angle)
-{
-    float s = sin(angle);
-    float c = cos(angle);
-    return mat2(c, -s, s, c);
-}
-
-vec3 rot3D(vec3 p, vec3 axis, float angle) {
-    //rodrigues rotation 
-    return mix(dot(axis,p) * axis, p, cos(angle)) + cross(axis, p) * sin(angle);
-}
-
 
 float map(vec3 p) { 
     p.z += iTime * .4;

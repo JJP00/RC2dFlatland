@@ -54,8 +54,8 @@ int main(void)
 
     glEnable(GL_DEPTH_TEST);
 
-    Shader distaceProgram("../resources/vertex/shader.vert", "../resources/fragment/distance.frag");
-    Shader shaderProgram("../resources/vertex/shader.vert", "../resources/fragment/shader.frag");
+    Shader distaceProgram("../resources/vertex/shader.vert", "../resources/fragment/distance.frag", "../resources/shaders/Common.glsl");
+    Shader shaderProgram("../resources/vertex/shader.vert", "../resources/fragment/shader.frag", "../resources/shaders/Common.glsl");
 
     float vertices[] = {
         1.0f, 1.0f, 0.0f,   // top right
@@ -101,7 +101,7 @@ int main(void)
     // Buffers para las pasadas
     // ---------------------------------------------------------------------------------------------
 
-    unsigned int iChannel1, FBO;
+    unsigned int iChannel1, cubemap, FBO, cubemapFBO[6];
 
     glGenTextures(1, &iChannel1);
     glBindTexture(GL_TEXTURE_2D, iChannel1);
@@ -111,12 +111,36 @@ int main(void)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
+    glGenTextures(1, &cubemap);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap);
+    for (unsigned int i = 0; i < 6; i++)
+    {
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGBA16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
+    }
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
     glGenFramebuffers(1, &FBO);
     glBindFramebuffer(GL_FRAMEBUFFER, FBO);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, iChannel1, 0);
 
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-        std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
+        std::cout << "ERROR::FRAMEBUFFER::TEXTURE2D Framebuffer is not complete!" << std::endl;
+
+    glGenFramebuffers(6, cubemapFBO);
+    for (int face = 0; face < 0; face++)
+    {
+        glBindFramebuffer(GL_FRAMEBUFFER, cubemapFBO[face]);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_NEGATIVE_X + face, cubemap, 0);
+
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        {
+            std::cerr << "ERROR::FRAMEBUFFER::CUBEMAP Framebuffer is not complete!" << std::endl;
+        }
+    }
 
     while (!glfwWindowShouldClose(ventana))
     {
