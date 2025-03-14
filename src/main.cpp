@@ -142,6 +142,8 @@ int main(void)
         }
     }
 
+    glBindTexture(GL_TEXTURE_2D, 0);
+
     while (!glfwWindowShouldClose(ventana))
     {
         // per-frame time logic
@@ -171,6 +173,7 @@ int main(void)
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
             SCR_HEIGHT_PREV = SCR_HEIGHT;
             SCR_WIDTH_PREV = SCR_WIDTH;
+            glBindTexture(GL_TEXTURE_2D, 0);
         }
 
         if (mouseInWindow && rightMouseButtonPressed)
@@ -182,8 +185,6 @@ int main(void)
         glBindFramebuffer(GL_FRAMEBUFFER, FBO);
         glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
 
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, iChannel1);
         distaceProgram.use();
 
         distaceProgram.setVec3("iResolution", resolution);
@@ -197,10 +198,11 @@ int main(void)
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
 
+        shaderProgram.use();
+
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, iChannel1);
-
-        shaderProgram.use();
+        shaderProgram.setInt("iChannel1", 0);
 
         shaderProgram.setVec3("iResolution", resolution);
         shaderProgram.setFloat("iTime", currentFrame);

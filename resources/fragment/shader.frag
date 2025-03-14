@@ -10,14 +10,14 @@ uniform vec3 iMouse;                // mouse pixel coords. xy: current (if MLB d
 void main ()
 {
     vec2 uv = gl_FragCoord.xy / iResolution.xy;
-    vec3 col = vec3(0);
+    vec3 col = vec3(0.0);
 
     vec4 bufferdata = texture(iChannel1, uv);
     float t = bufferdata.r;
-    float i = bufferdata.g;
-    
-    //colorings
-    col = palette(t*.04 + i*.005);
 
+    if (t < 0.001) {
+        col = vec3(0.9,.9,.9);
+    }
+    
     FragColor = vec4(col, 1.0);
 }
