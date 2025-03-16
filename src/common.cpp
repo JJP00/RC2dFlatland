@@ -100,7 +100,7 @@ void screenPos_callback(GLFWwindow *window, int xpos, int ypos)
 // proceso que lee la entrada de teclas
 // ---------------------------------------------------------------------------------------------
 
-void processInput(GLFWwindow *window, Shader *shader, Shader *shader2)
+void processInput(GLFWwindow *window, Shader *shader, Shader *shader2, Shader *shader3)
 {
     float cameraSpeed = 2.5f * deltaTime;
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -122,6 +122,7 @@ void processInput(GLFWwindow *window, Shader *shader, Shader *shader2)
     {
         shader->recompile();
         shader2->recompile();
+        shader3->recompile();
     }
 }
 

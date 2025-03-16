@@ -55,6 +55,7 @@ int main(void)
     glEnable(GL_DEPTH_TEST);
 
     Shader distaceProgram("../resources/vertex/shader.vert", "../resources/fragment/distance.frag", "../resources/Common.glsl");
+    Shader cubemapProgram("../resources/vertex/shader.vert", "../resources/fragment/radiancecascade.frag", "../resources/Common.glsl", "../resources/geometry/cubemap.glsl");
     Shader shaderProgram("../resources/vertex/shader.vert", "../resources/fragment/shader.frag", "../resources/Common.glsl");
 
     float vertices[] = {
@@ -102,7 +103,7 @@ int main(void)
     // ---------------------------------------------------------------------------------------------
 
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS); // Optional but recommended for cubemaps
-    unsigned int iChannel1, cubemap, FBO, depthRenderbuffer, cubemapFBO;
+    unsigned int iChannel1, iChannel0, FBO, depthRenderbuffer, cubemapFBO;
 
     glGenTextures(1, &iChannel1);
     glBindTexture(GL_TEXTURE_2D, iChannel1);
@@ -112,8 +113,8 @@ int main(void)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-    glGenTextures(1, &cubemap);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap);
+    glGenTextures(1, &iChannel0);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, iChannel0);
     for (unsigned int i = 0; i < 6; i++)
     {
         glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGBA16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
@@ -160,7 +161,7 @@ int main(void)
 
         // input
         // -----
-        processInput(ventana, &distaceProgram, &shaderProgram);
+        processInput(ventana, &distaceProgram, &cubemapProgram, &shaderProgram);
 
         // render
         // ------
@@ -200,15 +201,34 @@ int main(void)
 
         drawscreen(VAO);
 
-        // pass 2 - render final image color pallete
+        // pass 2 - radiance cascade
+
+        glBindFramebuffer(GL_FRAMEBUFFER, cubemapFBO);
+        cubemapProgram.use();
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, iChannel0);
+        cubemapProgram.setInt("iChannel0", 0);
+
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, iChannel1);
+        cubemapProgram.setInt("iChannel1", 1);
+
+        cubemapProgram.setVec3("iResolution", resolution);
+        cubemapProgram.setFloat("iTime", currentFrame);
+        cubemapProgram.setFloat("iTimeDelta", deltaTime);
+        cubemapProgram.setVec3("iMouse", mouse);
+
+        drawscreen(VAO);
+        // pass 3 - render final image
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
 
         shaderProgram.use();
 
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, iChannel1);
-        shaderProgram.setInt("iChannel1", 0);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, iChannel0);
+        shaderProgram.setInt("iChannel0", 0);
 
         shaderProgram.setVec3("iResolution", resolution);
         shaderProgram.setFloat("iTime", currentFrame);

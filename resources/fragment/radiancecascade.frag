@@ -1,4 +1,15 @@
-#include "./Common.glsl"
+out vec4 FragColor;
+
+in vec3 rayDirection;
+flat in int faceIndex;
+
+uniform vec3 iResolution;           // viewport resolution (in pixels)
+uniform float iTime;                // shader playback time (in seconds)
+uniform float iTimeDelta;           // render time (in seconds)
+uniform vec3 iMouse;                // mouse pixel coords. xy: current (if MLB down), zw: click
+
+uniform samplerCube iChannel0;
+uniform sampler2D iChannel1;
 
 vec4 CastMergedIntervalBilinearFix(vec2 screen_pos, vec2 dir, vec2 interval_length, int prev_cascade_index, int prev_dir_index)
 {
@@ -35,8 +46,9 @@ vec4 CastMergedIntervalBilinearFix(vec2 screen_pos, vec2 dir, vec2 interval_leng
     return merged_inteval;
 }
 
-void mainCubemap(out vec4 fragColor, vec2 fragCoord, vec3 fragRO, vec3 fragRD)
+vec4 mainCubemap(vec2 fragCoord, vec3 fragRO, vec3 fragRD)
 {
+    vec4 fragColor = vec4(0.0f);
 	// Calculate the index for this cubemap texel
     int face;
     if (abs(fragRD.x) > abs(fragRD.y) && abs(fragRD.x) > abs(fragRD.z)) {
@@ -63,10 +75,8 @@ void mainCubemap(out vec4 fragColor, vec2 fragCoord, vec3 fragRO, vec3 fragRD)
     if(probe_location.cascade_index >= nCascades)
     {
         fragColor = vec4(0.0f,0.0f,0.0f,1.0f);
-        return;
+        return fragColor;
     }
-
-
 
     vec2 interval_overlap = vec2(1.0f,1.0f);
 
@@ -92,13 +102,27 @@ void mainCubemap(out vec4 fragColor, vec2 fragCoord, vec3 fragRO, vec3 fragRD)
 
         merged_avg_interval += merged_inteval / float(avg_dirs_count);
     }
-
     fragColor = merged_avg_interval;
+    return fragColor;
 }
 
 void main() {
-    vec3 ro = vec3(0.0); // Ray origin at center
-    vec3 rd = normalize(vec3(fragCoord * 2.0 - 1.0, -1.0) * viewMatrix); // Direction based on face
+    vec2 uv = gl_FragCoord.xy / vec2(textureSize(iChannel1, 0)) * 2.0 - 1.0;
     
-    mainCubemap(fragColor, fragCoord, ro, rd);
+    // Determine ray direction based on which face we're rendering
+    vec3 ray_dir;
+    switch (faceIndex) {
+    case 0: ray_dir = vec3(+1.0, -uv.y, -uv.x); break; // right
+    case 1: ray_dir = vec3(-1.0, -uv.y, +uv.x); break; // left
+    case 2: ray_dir = vec3(+uv.x, +1.0, +uv.y); break; // up
+    case 3: ray_dir = vec3(+uv.x, -1.0, -uv.y); break; // down
+    case 4: ray_dir = vec3(+uv.x, -uv.y, +1.0); break; // front
+    case 5: ray_dir = vec3(-uv.x, -uv.y, -1.0); break; // back
+    }
+    ray_dir = normalize(ray_dir);
+    
+    // Call your existing mainCubemap function
+    vec4 result;
+    result = mainCubemap(gl_FragCoord.xy, vec3(0.0), ray_dir);
+    FragColor = vec4(1.0,1.,1.,1.);
 }

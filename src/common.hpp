@@ -57,7 +57,7 @@ void screenPos_callback(GLFWwindow *window, int xpos, int ypos);
 // proceso que lee la entrada de teclas
 // ---------------------------------------------------------------------------------------------
 
-void processInput(GLFWwindow *window, Shader *shader, Shader *shader2);
+void processInput(GLFWwindow *window, Shader *shader, Shader *shader2, Shader *shader3);
 
 // ---------------------------------------------------------------------------------------------
 // Funcción que lee la entrada del raton
