@@ -101,7 +101,8 @@ int main(void)
     // Buffers para las pasadas
     // ---------------------------------------------------------------------------------------------
 
-    unsigned int iChannel1, cubemap, FBO, cubemapFBO[6];
+    glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS); // Optional but recommended for cubemaps
+    unsigned int iChannel1, cubemap, FBO, depthRenderbuffer, cubemapFBO;
 
     glGenTextures(1, &iChannel1);
     glBindTexture(GL_TEXTURE_2D, iChannel1);
@@ -130,16 +131,21 @@ int main(void)
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
         std::cout << "ERROR::FRAMEBUFFER::TEXTURE2D Framebuffer is not complete!" << std::endl;
 
-    glGenFramebuffers(6, cubemapFBO);
-    for (int face = 0; face < 0; face++)
-    {
-        glBindFramebuffer(GL_FRAMEBUFFER, cubemapFBO[face]);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_NEGATIVE_X + face, cubemap, 0);
+    // Create depth renderbuffer
+    glGenRenderbuffers(1, &depthRenderbuffer);
+    glBindRenderbuffer(GL_RENDERBUFFER, depthRenderbuffer);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, SCR_WIDTH, SCR_HEIGHT);
 
-        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-        {
-            std::cerr << "ERROR::FRAMEBUFFER::CUBEMAP Framebuffer is not complete!" << std::endl;
-        }
+    // Set up framebuffer
+    glGenFramebuffers(1, &cubemapFBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, cubemapFBO);
+    // Attach depth buffer
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthRenderbuffer);
+
+    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (status != GL_FRAMEBUFFER_COMPLETE)
+    {
+        std::cerr << "ERROR::FRAMEBUFFER::CUBEMAP Framebuffer is not complete!";
     }
 
     glBindTexture(GL_TEXTURE_2D, 0);
