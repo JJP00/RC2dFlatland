@@ -9,12 +9,6 @@ uniform vec3 iMouse;                // mouse pixel coords. xy: current (if MLB d
 
 void main()
 {
-    // vec2 uv = gl_FragCoord.xy / iResolution.xy;
-
-    // vec4 bufferdata = texture(iChannel1, uv);
-    // float t = bufferdata.r;
- 
-    // FragColor = vec4(t,t,t, 1.0);
     ivec2 viewport_size = ivec2(iResolution.xy);
     ivec2 face_size = textureSize(iChannel0, 0);
     
@@ -50,6 +44,5 @@ void main()
         }
         fluence += MergeIntervals(c_minus1_radiance, c0_radiance) / float(cascade_size.dirs_count);
     }
-    
     FragColor = vec4(1.0 - 1.0 / pow(1.0 + fluence.rgb, vec3(2.5)), 1.0);
 }

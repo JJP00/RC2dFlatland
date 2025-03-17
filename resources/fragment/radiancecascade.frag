@@ -112,17 +112,17 @@ void main() {
     // Determine ray direction based on which face we're rendering
     vec3 ray_dir;
     switch (faceIndex) {
-    case 0: ray_dir = vec3(+1.0, -uv.y, -uv.x); break; // right
-    case 1: ray_dir = vec3(-1.0, -uv.y, +uv.x); break; // left
-    case 2: ray_dir = vec3(+uv.x, +1.0, +uv.y); break; // up
-    case 3: ray_dir = vec3(+uv.x, -1.0, -uv.y); break; // down
-    case 4: ray_dir = vec3(+uv.x, -uv.y, +1.0); break; // front
-    case 5: ray_dir = vec3(-uv.x, -uv.y, -1.0); break; // back
+        case 0: ray_dir = vec3(+1.0, -uv.y, -uv.x); break; // right
+        case 1: ray_dir = vec3(-1.0, -uv.y, +uv.x); break; // left
+        case 2: ray_dir = vec3(+uv.x, +1.0, +uv.y); break; // up
+        case 3: ray_dir = vec3(+uv.x, -1.0, -uv.y); break; // down
+        case 4: ray_dir = vec3(+uv.x, -uv.y, +1.0); break; // front
+        case 5: ray_dir = vec3(-uv.x, -uv.y, -1.0); break; // back
     }
     ray_dir = normalize(ray_dir);
     
     // Call your existing mainCubemap function
     vec4 result;
     result = mainCubemap(gl_FragCoord.xy, vec3(0.0), ray_dir);
-    FragColor = vec4(1.0,1.,1.,1.);
+    FragColor = result;
 }
