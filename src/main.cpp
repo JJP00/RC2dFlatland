@@ -130,7 +130,7 @@ int main(void)
     glGenTextures(1, &iChannel0);
     glBindTexture(GL_TEXTURE_CUBE_MAP, iChannel0);
 
-    int cubemapSize = 1024; // Example resolution
+    int cubemapSize = 2048; // Example resolution
     // 3. Allocate memory for all six faces
     glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RGBA16F, cubemapSize, cubemapSize, 0, GL_RGBA, GL_FLOAT, NULL);
     glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, GL_RGBA16F, cubemapSize, cubemapSize, 0, GL_RGBA, GL_FLOAT, NULL);
@@ -216,7 +216,7 @@ int main(void)
         // pass 2 - radiance cascade
 
         glBindFramebuffer(GL_FRAMEBUFFER, cubemapFBO);
-        glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+        glViewport(0, 0, cubemapSize, cubemapSize);
         cubemapProgram.use();
 
         glActiveTexture(GL_TEXTURE0);

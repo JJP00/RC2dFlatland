@@ -54,7 +54,7 @@ CascadeSize GetC0Size(ivec2 viewport_size)
 
 float GetC0IntervalLength(ivec2 viewport_size) 
 {
-    return float(viewport_size.x) * 1.5f * 1e-3f;
+    return float(viewport_size.x) * 0.5f * 1e-3f;
 }
 
 vec4 cubemapFetch(samplerCube sampler, int face, ivec2 P) {
@@ -81,7 +81,7 @@ vec4 cubemapFetch(samplerCube sampler, int face, ivec2 P) {
 
 float GetCascadeIntervalStartScale(int cascade_index)
 {
-        return (cascade_index == 0 ? 0.0f : float(1 << (BRANCHING_FACTOR * cascade_index))) + float(C_MINUS1_GATHERING);
+        return (cascade_index == 0 ? 0.0f : float(1 << (2 * cascade_index))) + float(C_MINUS1_GATHERING);
 }
 
 vec2 GetCascadeIntervalScale(int cascade_index)

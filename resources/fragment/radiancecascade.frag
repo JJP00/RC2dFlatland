@@ -107,7 +107,8 @@ vec4 mainCubemap(vec2 fragCoord, vec3 fragRO, vec3 fragRD)
 }
 
 void main() {
-    vec2 uv = gl_FragCoord.xy / vec2(textureSize(iChannel1, 0)) * 2.0 - 1.0;
+    float size = float(textureSize(iChannel0, 0).x); // Assuming cubemap faces are square
+    vec2 uv = (gl_FragCoord.xy / size) * 2.0 - 1.0;    
     
     // Determine ray direction based on which face we're rendering
     vec3 ray_dir;
