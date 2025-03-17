@@ -4,10 +4,10 @@
 #include <STB_IMAGE/stb_image.h>
 
 // settings
-unsigned int SCR_WIDTH = 1280;
-unsigned int SCR_HEIGHT = 720;
-unsigned int SCR_WIDTH_PREV = 1280;
-unsigned int SCR_HEIGHT_PREV = 720;
+unsigned int SCR_WIDTH = 1024;
+unsigned int SCR_HEIGHT = 1024;
+unsigned int SCR_WIDTH_PREV = 1024;
+unsigned int SCR_HEIGHT_PREV = 1024;
 
 // Camera
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));

@@ -10,6 +10,9 @@
 #include "class/shader.hpp"
 #include "common.hpp"
 
+#include <chrono>
+#include <thread>
+
 int main(void)
 {
     /* Initialize the library */
@@ -54,7 +57,7 @@ int main(void)
 
     // glEnable(GL_DEPTH_TEST);
 
-    Shader distaceProgram("../resources/vertex/shader.vert", "../resources/fragment/distance.frag", "../resources/Common.glsl");
+    // Shader distaceProgram("../resources/vertex/shader.vert", "../resources/fragment/distance.frag", "../resources/Common.glsl");
     Shader cubemapProgram("../resources/vertex/shader.vert", "../resources/fragment/radiancecascade.frag", "../resources/Common.glsl", "../resources/geometry/cubemap.glsl");
     Shader shaderProgram("../resources/vertex/shader.vert", "../resources/fragment/shader.frag", "../resources/Common.glsl");
 
@@ -163,8 +166,12 @@ int main(void)
     // 9. Unbind Framebuffer
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+    const int targetFPS = 30;
+    const double frameTime = 1000.0 / targetFPS; // Frame duration in milliseconds
+
     while (!glfwWindowShouldClose(ventana))
     {
+        auto startTime = std::chrono::high_resolution_clock::now();
         // per-frame time logic
         // --------------------
         float currentFrame = static_cast<float>(glfwGetTime());
@@ -173,7 +180,7 @@ int main(void)
 
         // input
         // -----
-        processInput(ventana, &distaceProgram, &cubemapProgram, &shaderProgram);
+        // processInput(ventana, nullptr, &cubemapProgram, &shaderProgram);
 
         // render
         // ------
@@ -201,17 +208,17 @@ int main(void)
             mouse = glm::vec3(lastX, -lastY, 0.0f);
 
         // pass 1 - render distance field
-        glBindFramebuffer(GL_FRAMEBUFFER, FBO);
-        glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+        // glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+        // glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
 
-        distaceProgram.use();
+        // distaceProgram.use();
 
-        distaceProgram.setVec3("iResolution", resolution);
-        distaceProgram.setFloat("iTime", currentFrame);
-        distaceProgram.setFloat("iTimeDelta", deltaTime);
-        distaceProgram.setVec3("iMouse", mouse);
+        // distaceProgram.setVec3("iResolution", resolution);
+        // distaceProgram.setFloat("iTime", currentFrame);
+        // distaceProgram.setFloat("iTimeDelta", deltaTime);
+        // distaceProgram.setVec3("iMouse", mouse);
 
-        drawscreen(VAO);
+        // drawscreen(VAO);
 
         // pass 2 - radiance cascade
 
@@ -219,9 +226,9 @@ int main(void)
         glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
         cubemapProgram.use();
 
-        glActiveTexture(GL_TEXTURE0);
+        glActiveTexture(GL_TEXTURE3);
         glBindTexture(GL_TEXTURE_CUBE_MAP, iChannel0);
-        cubemapProgram.setInt("iChannel0", 0);
+        cubemapProgram.setInt("iChannel3", 3);
 
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, iChannel1);
@@ -243,7 +250,7 @@ int main(void)
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_CUBE_MAP, iChannel0);
-        shaderProgram.setInt("iChannel0", 0);
+        shaderProgram.setInt("iChannel3", 3);
 
         shaderProgram.setVec3("iResolution", resolution);
         shaderProgram.setFloat("iTime", currentFrame);
@@ -256,14 +263,26 @@ int main(void)
         // -------------------------------------------------------------------------------
         glfwSwapBuffers(ventana);
         glfwPollEvents();
+
+        // Frame timing
+        auto endTime = std::chrono::high_resolution_clock::now();
+        double elapsed = std::chrono::duration<double, std::milli>(endTime - startTime).count();
+
+        if (elapsed < frameTime)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds((long)(frameTime - elapsed)));
+        }
     }
 
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
     glDeleteBuffers(1, &EBO);
     glDeleteFramebuffers(1, &FBO);
-    distaceProgram.deleteProgram();
+    glDeleteFramebuffers(1, &cubemapFBO);
+    // distaceProgram.deleteProgram();
     shaderProgram.deleteProgram();
+    cubemapProgram.deleteProgram();
+    glDeleteTextures(6, &iChannel0);
     glDeleteTextures(1, &iChannel1);
 
     glfwTerminate();

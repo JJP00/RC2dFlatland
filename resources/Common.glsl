@@ -1,293 +1,234 @@
 #version 330 core
 
-#define MERGE_FIX 1
-#define C_MINUS1_GATHERING 1
-// Number of cascades all together
-const int nCascades = 6;
+//CONST
+const float ICYCLETIME = 1./5.;
+const float CYCLETIME_OFFSET = 1.;
+const float I256 = 1./256.;
+const float I512 = 1./512.;
+const float I1024 = 1./1024.;
 
-// Brush radius used for drawing, measured as fraction of iResolution.y
-const float brushRadius = 0.02;
+//DEFINE
+#define RES iResolution.xy
+#define IRES 1./iResolution.xy
+#define ASPECT vec2(iResolution.x/iResolution.y,1.)
 
-const float MAX_FLOAT = uintBitsToFloat(0x7f7fffffu);
-const float PI = 3.1415927;
-const float MAGIC = 1e25;
+//STRUCT
+struct HIT { float t; vec2 uv; vec2 uvo; vec2 res; vec3 n; vec3 c; };
 
-#define probe_center vec2(0.5f)
-
-#define BRANCHING_FACTOR 2
-
-#define SPATIAL_SCALE_FACTOR 1
-
-struct CascadeSize {
-    ivec2 probes_count;  // Number of probes in this cascade 
-    int dirs_count;    // Number of directions in this cascade
-};
-
-struct ProbeLocation
-{
-    ivec2 probe_index;
-    int dir_index;
-    int cascade_index;
-};
-
-struct BilinearSamples
-{
-    ivec2 base_index;
-    vec2 ratio;
-};
-
-struct RayHit
-{
-    vec4 radiance;
-    float dist;
-};
-
-vec2 screenRes;
-
-CascadeSize GetC0Size(ivec2 viewport_size) 
-{
-    CascadeSize c0_size;
-    c0_size.probes_count = ivec2(512) * ivec2(1, viewport_size.y) / ivec2(1, viewport_size.x);//viewport_size / 10;
-    c0_size.dirs_count = 4;
-    return c0_size;
+//SDF
+vec2 Rotate2(vec2 p, float ang) {
+    //Rotates p *ang* radians
+    float c = cos(ang);
+    float s = sin(ang);
+    return vec2(p.x*c - p.y*s, p.x*s + p.y*c);
 }
 
-float GetC0IntervalLength(ivec2 viewport_size) 
-{
-    return float(viewport_size.x) * 1.5f * 1e-3f;
+vec2 Repeat2(vec2 p, float n) {
+    //Repeats p in a PI*2/n segment
+    float ang = 2.*3.141592653/n;
+    float sector = floor(atan(p.x, p.y)/ang + 0.5);
+    return Rotate2(p, sector*ang);
 }
 
-vec4 cubemapFetch(samplerCube sampler, int face, ivec2 P) {
-    // Look up a single texel in a cubemap
-    ivec2 cubemapRes = textureSize(sampler, 0);
-    if (clamp(P, ivec2(0), cubemapRes - 1) != P || face < 0 || face > 5) {
-        return vec4(0.0);
-    }
+float DFBox(vec2 p, vec2 b) {
+    //Distance field to box
+    vec2 d = abs(p - b*0.5) - b*0.5;
+    return min(max(d.x, d.y), 0.) + length(max(d, 0.));
+}
 
-    vec2 p = (vec2(P) + 0.5) / vec2(cubemapRes) * 2.0 - 1.0;
-    vec3 c;
+float DFBox(vec3 p, vec3 b) {
+    //Distance field to box
+    vec3 d = abs(p - b*0.5) - b*0.5;
+    return min(max(d.x, max(d.y, d.z)), 0.) + length(max(d, 0.));
+}
+
+//ANIMATED
+vec3 GetSkyLight(vec3 d) {
+    //Sky light function
+    return vec3(0.7, 0.8, 1.)*(1. - d.y*0.5);
+}
+
+vec3 GetSunLight(float t) {
+    //Sun light function
+    float nt = CYCLETIME_OFFSET + t*ICYCLETIME;
+    return vec3(1., 0.9, 0.65)*2.5;
+}
+
+vec3 GetSunDirection(float t) {
+    //Sun direction function
+    float nt = CYCLETIME_OFFSET + t*ICYCLETIME;
+    return normalize(vec3(-sin(nt*2.4), 1., -cos(nt*2.4)));
+}
+
+bool InteriorIntersection(vec3 p) {
+    //Intersection function when tracing interior wall
+    if (length(p.xy - vec2(0.5, 0.)) < 0.25) return true;
+    if (length(p.xy - vec2(0.87, 0.25)) < 0.12) return true;
+    return false;
+}
+
+bool DFIntersection(vec3 p, float t) {
+    //Intersection function when tracing geometry
+    float nt = CYCLETIME_OFFSET + t*ICYCLETIME;
     
-    switch (face) {
-        case 0: c = vec3( 1.0, -p.y, -p.x); break;
-        case 1: c = vec3(-1.0, -p.y,  p.x); break;
-        case 2: c = vec3( p.x,  1.0,  p.y); break;
-        case 3: c = vec3( p.x, -1.0, -p.y); break;
-        case 4: c = vec3( p.x, -p.y,  1.0); break;
-        case 5: c = vec3(-p.x, -p.y, -1.0); break;
+    vec3 rp = p - vec3(0.21 + (sin(nt)*0.5 + 0.5)*0.58, 0.5, 0.21 + (cos(nt)*0.5 + 0.5)*0.58);
+    vec2 rep = Repeat2(rp.xz, 8.);
+    float r = length(rp.xz);
+    if (p.y > 0.49 && abs(p.z - 0.5) > 0.04 && r < 0.2 && abs(r - 0.1375) > 0.01 &&
+        DFBox(vec2(rep.x + 0.01, rep.y - 0.015), vec2(0.02, 0.3)) > 0.) return true;
+    
+    return false;
+}
+
+//RT
+vec3 AQuad(vec3 p, vec3 d, vec3 vTan, vec3 vBit, vec3 vNor, vec2 pSize) {
+    //Analytic intersection of quad
+    float norDot = dot(vNor, d);
+    float pDot = dot(vNor, p);
+    if (sign(norDot*pDot) < -0.5) {
+        float t = -pDot/norDot;
+        vec2 hit2 = vec2(dot(p + d*t, vTan), dot(p + d*t, vBit));
+        if (DFBox(hit2, pSize) <= 0.) return vec3(hit2, t);
+    }
+    return vec3(-1.);
+}
+
+vec2 ABox(vec3 origin, vec3 dir, vec3 bmin, vec3 bmax) {
+    //Analytc intersection of box
+    vec3 tMin = (bmin - origin)*dir;
+    vec3 tMax = (bmax - origin)*dir;
+    vec3 t1 = min(tMin, tMax);
+    vec3 t2 = max(tMin, tMax);
+    return vec2(max(max(t1.x, t1.y), t1.z), min(min(t2.x, t2.y), t2.z));
+}
+
+vec2 ABoxNormal(vec3 origin, vec3 idir, vec3 bmin, vec3 bmax, out vec3 N) {
+    //Returns near/far, near normal as out
+    vec3 tMin = (bmin - origin)*idir;
+    vec3 tMax = (bmax - origin)*idir;
+    vec3 t1 = min(tMin, tMax);
+    vec3 t2 = max(tMin, tMax);
+    vec3 signdir = -(max(vec3(0.), sign(idir))*2. - 1.);
+    if (t1.x > max(t1.y, t1.z)) N = vec3(signdir.x, 0., 0.);
+    else if (t1.y > t1.z) N = vec3(0., signdir.y, 0.);
+    else N = vec3(0., 0., signdir.z);
+    return vec2(max(max(t1.x, t1.y), t1.z), min(min(t2.x, t2.y), t2.z));
+}
+
+float ASphere(vec3 p, vec3 d, float r) {
+    //Analytic intersection of sphere
+    float a = dot(p, p) - r*r;
+    float b = 2.*dot(p, d);
+    float re = b*b*0.25 - a;
+    if (dot(p, d) < 0. && re > 0.) {
+        float st = -b*0.5 - sqrt(re);
+        return st;
+    }
+    return -1.;
+}
+
+float ACylZ(vec3 p, vec3 d, float r) {
+    //Analytic intersection of cylinder along Z
+    float a = (dot(p.xy, p.xy) - r*r)/dot(d.xy, d.xy);
+    float b = 2.*dot(p.xy, d.xy)/dot(d.xy, d.xy);
+    float re = b*b*0.25 - a;
+    if (re > 0.) {
+        float st = -b*0.5 + sqrt(re);
+        return st;
+    }
+    return -1.;
+}
+
+HIT TraceRay(vec3 p, vec3 d, float maxt, float time) {
+    //Ray intersection function
+    HIT info = HIT(maxt, vec2(-1.), vec2(-1.), vec2(-1.), vec3(-20.), vec3(-1.));
+    vec3 uvt, sp;
+    vec2 bb;
+    float st;
+    
+    //Floor
+    uvt = AQuad(p, d, vec3(1., 0., 0.), vec3(0., 0., 1.), vec3(0., 1., 0.), vec2(1., 1.));
+    if (uvt.z > -0.5 && uvt.z < info.t && !DFIntersection(p + d*uvt.z, time))
+        info = HIT(uvt.z, uvt.xy, vec2(0., 0.), vec2(256.), vec3(0., 1., 0.), vec3(0.9));
+    
+    //Ceiling
+    uvt = AQuad(p - vec3(0., 0.5, 0.), d, vec3(1., 0., 0.), vec3(0., 0., 1.), vec3(0., 1., 0.), vec2(1., 1.));
+    if (uvt.z > -0.5 && uvt.z < info.t && !DFIntersection(p + d*uvt.z, time))
+        info = HIT(uvt.z, uvt.xy, vec2(256., 0.), vec2(256.), vec3(0., -1., 0.), vec3(0.9));
+    
+    //Walls X 1 x 0.5
+    uvt = AQuad(p, d, vec3(0., 1., 0.), vec3(0., 0., 1.), vec3(1., 0., 0.), vec2(0.5, 1.));
+    if (uvt.z > -0.5 && uvt.z < info.t && !DFIntersection(p + d*uvt.z, time))
+        info = HIT(uvt.z, uvt.xy, vec2(512., 0.), vec2(128., 256.), vec3(1., 0., 0.), vec3(0.9, 0.1, 0.1));
+    uvt = AQuad(p - vec3(1., 0., 0.), d, vec3(0., 1., 0.), vec3(0., 0., 1.), vec3(-1., 0., 0.), vec2(0.5, 1.));
+    if (uvt.z > -0.5 && uvt.z < info.t && !DFIntersection(p + d*uvt.z, time))
+        info = HIT(uvt.z, uvt.xy, vec2(640., 0.), vec2(128., 256.), vec3(-1., 0., 0.), vec3(0.05, 0.95, 0.1));
+    
+    //Walls Z 1 x 0.5
+    uvt = AQuad(p, d, vec3(0., 1., 0.), vec3(1., 0., 0.), vec3(0., 0., -1.), vec2(0.5, 1.));
+    if (uvt.z > -0.5 && uvt.z < info.t && !DFIntersection(p + d*uvt.z, time))
+        info = HIT(uvt.z, uvt.xy, vec2(768., 0.), vec2(128., 256.), vec3(0., 0., 1.), vec3(0.9));
+    uvt = AQuad(p - vec3(0., 0., 1.), d, vec3(0., 1., 0.), vec3(1., 0., 0.), vec3(0., 0., -1.), vec2(0.5, 1.));
+    if (uvt.z > -0.5 && uvt.z < info.t && !DFIntersection(p + d*uvt.z, time))
+        info = HIT(uvt.z, uvt.xy, vec2(896., 0.), vec2(128., 256.), vec3(0., 0., -1.), vec3(0.9));
+    
+    //Interior wall
+    uvt = AQuad(p - vec3(0., 0., 0.47 - 1./256.), d, vec3(0., 1., 0.), vec3(1., 0., 0.), vec3(0., 0., -1.), vec2(0.5, 1.));
+    if (uvt.z > -0.5 && uvt.z < info.t && !InteriorIntersection(p + d*uvt.z))
+        info = HIT(uvt.z, uvt.xy, vec2(0., 1536), vec2(128., 256.), vec3(0., 0., -1.), vec3(0.99));
+    uvt = AQuad(p - vec3(0., 0., 0.53 - 1./256.), d, vec3(0., 1., 0.), vec3(1., 0., 0.), vec3(0., 0., -1.), vec2(0.5, 1.));
+    if (uvt.z > -0.5 && uvt.z < info.t && !InteriorIntersection(p + d*uvt.z))
+        info = HIT(uvt.z, uvt.xy, vec2(128., 1536.), vec2(128., 256.), vec3(0., 0., 1.), vec3(0.99));
+    sp = p - vec3(0.5, 0., 0.);
+    st = ACylZ(sp, d, 0.25);
+    if (st > 0. && st < info.t && sp.z + d.z*st >= 0.47 - 1./256. && sp.z + d.z*st <= 0.53 - 1./256.)
+        info = HIT(st, vec2(1.), vec2(-1.), vec2(-1.), vec3(-normalize(sp.xy + d.xy*st), 0.), vec3(0.));
+    sp = p - vec3(0.87, 0.25, 0.);
+    st = ACylZ(sp, d, 0.12);
+    if (st > 0. && st < info.t && sp.z + d.z*st >= 0.47 - 1./256. && sp.z + d.z*st <= 0.53 - 1./256.)
+        info = HIT(st, vec2(1.), vec2(-1.), vec2(-1.), vec3(-normalize(sp.xy + d.xy*st), 0.), vec3(0.));
+    
+    
+    //Mirror sphere
+    sp = p - vec3(0.15, 0.1005, 0.3);
+    st = ASphere(sp, d, 0.1);
+    if (st > -0.5 && st < info.t) info = HIT(st, vec2(1.), vec2(-1.), vec2(-1.), normalize(sp + d*st), vec3(-2.));
+    
+    //Mirror box
+    vec3 sn;
+    vec3 sd = d;
+    sp = p - vec3(0.86, 0.14, 0.86);
+    sd = normalize(sd);
+    bb = ABoxNormal(sp, 1./sd, vec3(-0.08), vec3(0.08), sn);
+    if (bb.x > 0. && bb.y > bb.x && bb.x < info.t) {
+        info = HIT(bb.x, vec2(1.), vec2(-1.), vec2(-1.), normalize(sn), vec3(-2.));
     }
     
-    return texture(sampler, normalize(c));
+    return info;
 }
 
-float GetCascadeIntervalStartScale(int cascade_index)
-{
-        return (cascade_index == 0 ? 0.0f : float(1 << (BRANCHING_FACTOR * cascade_index))) + float(C_MINUS1_GATHERING);
-}
-
-vec2 GetCascadeIntervalScale(int cascade_index)
-{
-    return vec2(GetCascadeIntervalStartScale(cascade_index), GetCascadeIntervalStartScale(cascade_index + 1));
-}
-
-vec4 GetBilinearWeights(vec2 ratio)
-{
-    return vec4(
-        (1.0f - ratio.x) * (1.0f - ratio.y),
-        ratio.x * (1.0f - ratio.y),
-        (1.0f - ratio.x) * ratio.y,
-        ratio.x * ratio.y);
-}
-
-ivec2 GetBilinearOffset(int offset_index)
-{
-    ivec2 offsets[4] = ivec2[4](ivec2(0, 0), ivec2(1, 0), ivec2(0, 1), ivec2(1, 1));
-    return offsets[offset_index];
-}
-
-BilinearSamples GetBilinearSamples(vec2 pixel_index2f)
-{
-    BilinearSamples samples;
-    samples.base_index = ivec2(floor(pixel_index2f));
-    samples.ratio = fract(pixel_index2f);
-    return samples;
-}
-
-CascadeSize GetCascadeSize(int cascade_index, CascadeSize c0_size)
-{
-    CascadeSize cascade_size;
-    cascade_size.probes_count = max(ivec2(1), c0_size.probes_count >> (SPATIAL_SCALE_FACTOR * cascade_index));
-    cascade_size.dirs_count = c0_size.dirs_count * (1 << (BRANCHING_FACTOR * cascade_index));
-    return cascade_size;
-}
-
-int GetCascadeLinearOffset(int cascade_index, CascadeSize c0_size)
-{
-    int c0_pixel_count = c0_size.probes_count.x * c0_size.probes_count.y * c0_size.dirs_count;
-    int offset = 0;
-
-    for(int i = 0; i < cascade_index; i++)
-    {
-        CascadeSize cascade_size = GetCascadeSize(i, c0_size);
-        offset += cascade_size.probes_count.x * cascade_size.probes_count.y * cascade_size.dirs_count;
+//MATH
+mat3 TBN(vec3 N) {
+    //Naive TBN matrix creation
+    vec3 Nb, Nt;
+    if (abs(N.y) > 0.999) {
+        Nb = vec3(1., 0., 0.);
+        Nt = vec3(0., 0., 1.);
+    } else {
+    	Nb = normalize(cross(N, vec3(0., 1., 0.)));
+    	Nt = normalize(cross(Nb, N));
     }
-    return offset;  
+    return mat3(Nb.x, Nt.x, N.x, Nb.y, Nt.y, N.y, Nb.z, Nt.z, N.z);
 }
 
-ProbeLocation PixelIndexToProbeLocation(int pixel_index, CascadeSize c0_size)
-{
-    ProbeLocation probe_location;
-
-    for(
-        probe_location.cascade_index = 0;
-        GetCascadeLinearOffset(probe_location.cascade_index + 1, c0_size) <= pixel_index && probe_location.cascade_index < 10;
-        probe_location.cascade_index++);
-
-    int offset_in_cascade = pixel_index - GetCascadeLinearOffset(probe_location.cascade_index, c0_size);
-    CascadeSize cascade_size = GetCascadeSize(probe_location.cascade_index, c0_size);
-    
-    probe_location.dir_index = offset_in_cascade % cascade_size.dirs_count;
-    int probe_linear_index = offset_in_cascade / cascade_size.dirs_count;
-    probe_location.probe_index = ivec2(probe_linear_index % cascade_size.probes_count.x, probe_linear_index / cascade_size.probes_count.x);
-    return probe_location;
-}
-
-int ProbeLocationToPixelIndex(ProbeLocation probe_location, CascadeSize c0_size)
-{
-    CascadeSize cascade_size = GetCascadeSize(probe_location.cascade_index, c0_size);
-    int probe_lineal_index = probe_location.probe_index.x + probe_location.probe_index.y * cascade_size.probes_count.x;
-    int offset_in_cascade = probe_lineal_index * cascade_size.dirs_count + probe_location.dir_index;
-    return GetCascadeLinearOffset(probe_location.cascade_index, c0_size) + offset_in_cascade ;
-}
-
-ivec3 PixelIndexToCubemapTexel(ivec2 face_size, int pixel_index)
-{
-    int face_pixels_count = face_size.x * face_size.y;
-    int face_index = pixel_index / face_pixels_count;
-    int face_pixel_index = pixel_index - face_pixels_count * face_index;
-    ivec2 face_pixel = ivec2(face_pixel_index % face_size.x , face_pixel_index / face_size.x);
-
-    return ivec3(face_pixel, face_index); 
-}
-
-vec2 GetProbeScreenSize(int cascade_index, CascadeSize c0_size)
-{
-    vec2 c0_probe_screen_size = vec2(1.0f) / vec2(c0_size.probes_count);
-    return c0_probe_screen_size * float(1 << (SPATIAL_SCALE_FACTOR * cascade_index));
-}
-
-BilinearSamples GetProbeBilinearSamples(vec2 screen_pos, int cascade_index, CascadeSize c0_size)
-{
-    vec2 probe_screen_size = GetProbeScreenSize(cascade_index, c0_size);
-
-    vec2 prev_probe_index2f = screen_pos / probe_screen_size - probe_center;
-    return GetBilinearSamples(prev_probe_index2f);
-}
-
-vec2 GetProbeScreenPos(vec2 probe_index2f, int cascade_index, CascadeSize c0_size)
-{
-    vec2 probe_screen_size = GetProbeScreenSize(cascade_index, c0_size);
-    
-    return (probe_index2f + probe_center) * probe_screen_size;
-}
-
-vec2 GetProbeDir(float dir_indexf, int dirs_count)
-{
-    float ang_ratio = (dir_indexf + 0.5f) / float(dirs_count);
-    float ang = ang_ratio * 2.0f * PI;
-    return vec2(cos(ang), sin(ang));
-}
-
-vec4 MergeIntervals(vec4 near_interval, vec4 far_interval)
-{
-    return vec4(near_interval.rgb + near_interval.a * far_interval.rgb, near_interval.a * far_interval.a);
-}
-
-float sdOrientedBox( in vec2 p, in vec2 a, in vec2 b, float th )
-{
-    float l = length(b-a);
-    vec2  d = (b-a)/l;
-    vec2  q = p-(a+b)*0.5;
-          q = mat2(d.x,-d.y,d.y,d.x)*q;
-          q = abs(q)-vec2(l*0.5,th);
-    return length(max(q,0.0)) + min(max(q.x,q.y),0.0);    
-}
-
-float sdCircle(vec2 p, vec2 c, float r) {
-    return distance(p, c) - r;
-}
-
-vec4 sampleDrawing(sampler2D drawingTex, vec2 P) {
-    // Return the drawing (in the format listed at the top of Buffer B) at P
-    vec4 data = texture(drawingTex, P / vec2(textureSize(drawingTex, 0)));
-  
-    return data;
-}
-
-float sdDrawing(sampler2D drawingTex, vec2 P) {
-    // Return the signed distance for the drawing at P
-    return sampleDrawing(drawingTex, P).r;
-}
-
-vec2 intersectAABB(vec2 ro, vec2 rd, vec2 a, vec2 b)
-{
-    vec2 ta = (a - ro) / rd;
-    vec2 tb = (b - ro) / rd;
-    vec2 t1 = min(ta, tb);
-    vec2 t2 = max(ta, tb);
-    vec2 t = vec2(max(t1.x, t1.y), min(t2.x, t2.y));
-    return t.x > t.y ? vec2(-1.0) : t;  
-}
-
-float intersect(sampler2D sdf_tex, vec2 ro, vec2 rd, float tMax)
-{
-    screenRes = vec2(textureSize(sdf_tex, 0));
-    float tOffset = 0.0; 
-
-    vec2 tAABB = intersectAABB(ro, rd, vec2(0.0001), screenRes - 0.0001);
-
-    if (tAABB.x > tMax || tAABB.y < 0.0)
-        return -1.0;
-    
-    if (tAABB.x > 0.0) {
-        ro += tAABB.x * rd;
-        tOffset += tAABB.x;
-        tMax -= tAABB.x;
-    }
-
-    if (tAABB.y < tMax) {
-        tMax = tAABB.y;
-    }
-
-    float t = 0.0;
-
-    for (int i = 0; i < 100; i++)
-    {
-        float d = sdDrawing(sdf_tex, ro+rd * t);
-
-        t+= (d);
-        if ((d) < 0.01)
-            return t;
-        
-        if( t >= tMax)
-            break;
-    }
-
-    return -1.0;
-
-}
-
-RayHit radiance(sampler2D sdf_tex, vec2 ro, vec2 rd, float tMax)
-{
-    vec4 p = sampleDrawing(sdf_tex, ro);
-    float t = 1e6f;
-
-    if(p.r > 0.0) {
-        t = intersect(sdf_tex, ro, rd, tMax);
-
-        if (t == -1.0)
-            return RayHit(vec4(0.0, 0.0, 0.0, 1.0), 1e5f);
-
-        p = sampleDrawing(sdf_tex, ro + rd * t);
-    } 
-    return RayHit(vec4(p.gba, 0.0), t);
+vec3 BRDF_GGX(vec3 w_o, vec3 w_i, vec3 n, float alpha, vec3 F0) {
+    //BRDF GGX
+    vec3 h = normalize(w_i + w_o);
+    float a2 = alpha*alpha;
+    float D = a2/(3.141592653*pow(pow(dot(h, n), 2.)*(a2 - 1.) + 1., 2.));
+    vec3 F = F0 + (1. - F0)*pow(1. - dot(n, w_o), 5.);
+    float k = a2*0.5;
+    float G = 1./((dot(n, w_i)*(1. - k)+k)*(dot(n, w_o)*(1. - k) + k));
+    vec3 OUT = F*(D*G*0.25);
+    return ((isnan(OUT) != bvec3(false)) ? vec3(0.) : OUT);
 }
