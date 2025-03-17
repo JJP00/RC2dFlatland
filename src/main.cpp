@@ -223,7 +223,7 @@ int main(void)
         // pass 2 - radiance cascade
 
         glBindFramebuffer(GL_FRAMEBUFFER, cubemapFBO);
-        glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+        glViewport(0, 0, cubemapSize, cubemapSize);
         cubemapProgram.use();
 
         glActiveTexture(GL_TEXTURE3);
