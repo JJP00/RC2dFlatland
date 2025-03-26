@@ -55,7 +55,7 @@ int main(void)
     // glEnable(GL_DEPTH_TEST);
 
     Shader distaceProgram("../resources/vertex/shader.vert", "../resources/fragment/distance.frag", "../resources/Common.glsl");
-    Shader cubemapProgram("../resources/vertex/shader.vert", "../resources/fragment/radiancecascade.frag", "../resources/Common.glsl", "../resources/geometry/cubemap.glsl");
+    Shader RCProgram("../resources/vertex/shader.vert", "../resources/fragment/radiancecascade.frag", "../resources/Common.glsl");
     Shader shaderProgram("../resources/vertex/shader.vert", "../resources/fragment/shader.frag", "../resources/Common.glsl");
 
     float vertices[] = {
@@ -105,7 +105,7 @@ int main(void)
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS); // Optional but recommended for cubemaps
     unsigned int iChannel1, iChannel0, FBO, depthRenderbuffer, cubemapFBO;
 
-    glGenTextures(1, &iChannel1);
+    glGenTextures(1, &iChannel1); // textura ichannel1 para calcular distacia y radiancia
     glBindTexture(GL_TEXTURE_2D, iChannel1);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -120,45 +120,68 @@ int main(void)
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
         std::cout << "ERROR::FRAMEBUFFER::TEXTURE2D Framebuffer is not complete!" << std::endl;
 
-    // cubemap
+    // buffers para el pingpong rendering
 
-    // 1. Create Framebuffer
-    glGenFramebuffers(1, &cubemapFBO);
-    glBindFramebuffer(GL_FRAMEBUFFER, cubemapFBO);
+    unsigned int readFBO, writeFBO, writeTex, readTex;
 
-    // 2. Create and Bind Cubemap Texture
-    glGenTextures(1, &iChannel0);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, iChannel0);
+    glGenFramebuffers(1, &readFBO);
+    glGenFramebuffers(1, &writeFBO);
 
-    int cubemapSize = 2048; // Example resolution
-    // 3. Allocate memory for all six faces
-    glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RGBA16F, cubemapSize, cubemapSize, 0, GL_RGBA, GL_FLOAT, NULL);
-    glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, GL_RGBA16F, cubemapSize, cubemapSize, 0, GL_RGBA, GL_FLOAT, NULL);
-    glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, GL_RGBA16F, cubemapSize, cubemapSize, 0, GL_RGBA, GL_FLOAT, NULL);
-    glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, GL_RGBA16F, cubemapSize, cubemapSize, 0, GL_RGBA, GL_FLOAT, NULL);
-    glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGBA16F, cubemapSize, cubemapSize, 0, GL_RGBA, GL_FLOAT, NULL);
-    glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, GL_RGBA16F, cubemapSize, cubemapSize, 0, GL_RGBA, GL_FLOAT, NULL);
-    // 4. Set texture parameters
+    glGenTextures(1, &writeTex);
+    glGenTextures(1, &readTex);
 
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-
-    // 5. Attach the cubemap texture to the framebuffer
-
-    glFramebufferTexture(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, iChannel0, 0);
-
-    static const GLuint draw_buffers[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT5};
-    glDrawBuffers(6, draw_buffers);
-
-    // 8. Check Framebuffer Completeness
-    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-    if (status != GL_FRAMEBUFFER_COMPLETE)
+    for (GLuint tex : {writeTex, readTex})
     {
-        std::cout << "Cubemap framebuffer is not complete! Error: " << status << std::endl;
+        glBindTexture(GL_TEXTURE_2D, tex);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, readFBO);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, readTex, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, writeFBO);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, writeTex, 0);
+
+    // // cubemap
+
+    // // 1. Create Framebuffer
+    // glGenFramebuffers(1, &cubemapFBO);
+    // glBindFramebuffer(GL_FRAMEBUFFER, cubemapFBO);
+
+    // // 2. Create and Bind Cubemap Texture
+    // glGenTextures(1, &iChannel0);
+    // glBindTexture(GL_TEXTURE_CUBE_MAP, iChannel0);
+
+    // int cubemapSize = 2048; // Example resolution
+    // // 3. Allocate memory for all six faces
+    // glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RGBA16F, cubemapSize, cubemapSize, 0, GL_RGBA, GL_FLOAT, NULL);
+    // glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, GL_RGBA16F, cubemapSize, cubemapSize, 0, GL_RGBA, GL_FLOAT, NULL);
+    // glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, GL_RGBA16F, cubemapSize, cubemapSize, 0, GL_RGBA, GL_FLOAT, NULL);
+    // glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, GL_RGBA16F, cubemapSize, cubemapSize, 0, GL_RGBA, GL_FLOAT, NULL);
+    // glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGBA16F, cubemapSize, cubemapSize, 0, GL_RGBA, GL_FLOAT, NULL);
+    // glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, GL_RGBA16F, cubemapSize, cubemapSize, 0, GL_RGBA, GL_FLOAT, NULL);
+    // // 4. Set texture parameters
+
+    // glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    // glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    // glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    // glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    // glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    // // 5. Attach the cubemap texture to the framebuffer
+
+    // glFramebufferTexture(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, iChannel0, 0);
+
+    // static const GLuint draw_buffers[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT5};
+    // glDrawBuffers(6, draw_buffers);
+
+    // // 8. Check Framebuffer Completeness
+    // GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    // if (status != GL_FRAMEBUFFER_COMPLETE)
+    // {
+    //     std::cout << "Cubemap framebuffer is not complete! Error: " << status << std::endl;
+    // }
 
     // 9. Unbind Framebuffer
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -173,7 +196,7 @@ int main(void)
 
         // input
         // -----
-        processInput(ventana, &distaceProgram, &cubemapProgram, &shaderProgram);
+        processInput(ventana, &distaceProgram, &RCProgram, &shaderProgram);
 
         // render
         // ------
@@ -213,37 +236,47 @@ int main(void)
 
         drawscreen(VAO);
 
-        // pass 2 - radiance cascade
+        // pass 2 ping pong render
 
-        glBindFramebuffer(GL_FRAMEBUFFER, cubemapFBO);
-        glViewport(0, 0, cubemapSize, cubemapSize);
-        cubemapProgram.use();
+        for (int i = 6; i >= 0; i--)
+        {
+            glBindFramebuffer(GL_FRAMEBUFFER, writeFBO);
+            glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+            glClear(GL_COLOR_BUFFER_BIT);
 
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, iChannel0);
-        cubemapProgram.setInt("iChannel0", 0);
+            RCProgram.use();
 
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, iChannel1);
-        cubemapProgram.setInt("iChannel1", 1);
+            glActiveTexture(GL_TEXTURE1);
+            glBindTexture(GL_TEXTURE_2D, iChannel1);
+            RCProgram.setInt("iChannel1", 1); // distacia y radiancia
 
-        cubemapProgram.setVec3("iResolution", resolution);
-        cubemapProgram.setFloat("iTime", currentFrame);
-        cubemapProgram.setFloat("iTimeDelta", deltaTime);
-        cubemapProgram.setVec3("iMouse", mouse);
+            RCProgram.setVec3("iResolution", resolution);
+            RCProgram.setFloat("iTime", currentFrame);
+            RCProgram.setFloat("iTimeDelta", deltaTime);
+            RCProgram.setVec3("iMouse", mouse);
 
-        glBindVertexArray(VAO);
-        glDrawArrays(GL_POINTS, 0, 1); // Render a single point to trigger geometry shader
+            RCProgram.setFloat("in_CascadeIndex", float(i));
 
-        // pass 3 - render final image
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, readTex);
+
+            drawscreen(VAO);
+
+            std::swap(readFBO, writeFBO);
+            std::swap(readTex, writeTex);
+        }
+
+        // pass 3 final shader
+
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+        glClear(GL_COLOR_BUFFER_BIT);
 
         shaderProgram.use();
 
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, iChannel0);
-        shaderProgram.setInt("iChannel0", 0);
+        glBindTexture(GL_TEXTURE_2D, readTex);
+        RCProgram.setInt("readTex", 0); // distacia y radiancia
 
         shaderProgram.setVec3("iResolution", resolution);
         shaderProgram.setFloat("iTime", currentFrame);

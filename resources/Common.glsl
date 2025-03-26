@@ -18,6 +18,8 @@ const float MAGIC = 1e25;
 
 #define SPATIAL_SCALE_FACTOR 1
 
+#define V2F16(v) ((v.y * float(0.0039215689)) + v.x)
+
 struct CascadeSize {
     ivec2 probes_count;  // Number of probes in this cascade 
     int dirs_count;    // Number of directions in this cascade
@@ -47,8 +49,8 @@ vec2 screenRes;
 CascadeSize GetC0Size(ivec2 viewport_size) 
 {
     CascadeSize c0_size;
-    c0_size.probes_count = ivec2(512) * ivec2(1, viewport_size.y) / ivec2(1, viewport_size.x);//viewport_size / 10;
-    c0_size.dirs_count = 4;
+    c0_size.probes_count = ivec2(512) * ivec2(1, viewport_size.y) / ivec2(1, viewport_size.x); // in_CascadeExtend segun GM shaders
+    c0_size.dirs_count = 4; // numero de direcciones
     return c0_size;
 }
 

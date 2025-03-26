@@ -1,129 +1,109 @@
 out vec4 FragColor;
 
-in vec3 rayDirection;
-flat in int faceIndex;
+// in vec3 rayDirection; // necesario para procesar el cubemap
+// flat in int faceIndex;
 
 uniform vec3 iResolution;           // viewport resolution (in pixels)
 uniform float iTime;                // shader playback time (in seconds)
 uniform float iTimeDelta;           // render time (in seconds)
 uniform vec3 iMouse;                // mouse pixel coords. xy: current (if MLB down), zw: click
 
-uniform samplerCube iChannel0;
-uniform sampler2D iChannel1;
+//exclusivo de RC
 
-vec4 CastMergedIntervalBilinearFix(vec2 screen_pos, vec2 dir, vec2 interval_length, int prev_cascade_index, int prev_dir_index)
-{
-    ivec2 face_size = textureSize(iChannel0, 0);
-    ivec2 viewport_size = textureSize(iChannel1, 0);
-    CascadeSize c0_size = GetC0Size(viewport_size);
-    CascadeSize prev_cascade_size = GetCascadeSize(prev_cascade_index, c0_size);
+uniform float in_CascadeIndex;
+float in_CascadeLinear = 4.;
 
-    BilinearSamples bilineal_samples = GetProbeBilinearSamples(screen_pos, prev_cascade_index, c0_size);
-    vec4 weights = GetBilinearWeights(bilineal_samples.ratio);
-    vec4 merged_inteval = vec4(0.0f);
-    for (int i = 0; i < 4; i++)
-    {
-        ProbeLocation prev_probe_location;
-        prev_probe_location.cascade_index = prev_cascade_index;
-        prev_probe_location.probe_index = clamp(bilineal_samples.base_index + GetBilinearOffset(i), ivec2(0), prev_cascade_size.probes_count - ivec2(1));
-        prev_probe_location.dir_index = prev_dir_index;
+#define TAU 6.283185
 
-        int pixel_index = ProbeLocationToPixelIndex(prev_probe_location, c0_size);
-        ivec3 texel_index = PixelIndexToCubemapTexel(face_size, pixel_index);
+uniform sampler2D iChannel1;    // r = distancia, gba = radiancia
 
-        vec4 prev_interval = vec4(0.0f, 0.0f, 0.0f, 1.0f);
-        if(prev_cascade_index < nCascades)
-            prev_interval = cubemapFetch(iChannel0, texel_index.z, texel_index.xy);
-
-        vec2 prev_screen_pos = GetProbeScreenPos(vec2(prev_probe_location.probe_index), prev_probe_location.cascade_index, c0_size);
-
-        vec2 ray_start = screen_pos * vec2(viewport_size) + dir * interval_length.x;
-        vec2 ray_end = prev_screen_pos * vec2(viewport_size) + dir * interval_length.y;
-
-        RayHit  ray_hit = radiance(iChannel1, ray_start, normalize(ray_end - ray_start), length(ray_end - ray_start));
-        merged_inteval += MergeIntervals(ray_hit.radiance, prev_interval) * weights[i];
-    }
-    return merged_inteval;
+vec3 tosrgb(vec3 color) { 
+    return pow(color, vec3(2.2)); 
 }
 
-vec4 mainCubemap(vec2 fragCoord, vec3 fragRO, vec3 fragRD)
-{
-    vec4 fragColor = vec4(0.0f);
-	// Calculate the index for this cubemap texel
-    int face;
-    if (abs(fragRD.x) > abs(fragRD.y) && abs(fragRD.x) > abs(fragRD.z)) {
-        face = fragRD.x > 0.0 ? 0 : 1;
-    } else if (abs(fragRD.y) > abs(fragRD.z)) {
-        face = fragRD.y > 0.0 ? 2 : 3;
-    } else {
-        face = fragRD.z > 0.0 ? 4 : 5;
-    }
+struct probe_info {
+    float angular;
+    vec2 linear, size, probe;
+    float index, offset, range, scale;
+};
 
-    ivec2 face_size =  textureSize(iChannel0, 0);
-
-    
-    ivec2 face_pixel = ivec2(fragCoord.xy);
-    int face_index = face;
-    int pixel_index =  face_pixel.x + face_pixel.y * face_size.x + face_index * (face_size.x * face_size.y);
-
-    //obtener la cascada
-
+probe_info cascadeTexelInfo(vec2 coord) {
     ivec2 viewport_size = textureSize(iChannel1, 0);
-    CascadeSize c0_size = GetC0Size(viewport_size);
-    ProbeLocation probe_location = PixelIndexToProbeLocation(pixel_index, c0_size);
-
-    if(probe_location.cascade_index >= nCascades)
-    {
-        fragColor = vec4(0.0f,0.0f,0.0f,1.0f);
-        return fragColor;
-    }
-
-    vec2 interval_overlap = vec2(1.0f,1.0f);
-
-    vec2 interval_length = GetCascadeIntervalScale(probe_location.cascade_index) * GetC0IntervalLength(viewport_size) * interval_overlap;
-    CascadeSize cascade_size = GetCascadeSize(probe_location.cascade_index, c0_size);
-    int prev_cascade_index = probe_location.cascade_index + 1;
-    CascadeSize prev_cascade_size = GetCascadeSize(prev_cascade_index, c0_size);
-
-    vec2 screen_pos = GetProbeScreenPos(vec2(probe_location.probe_index), probe_location.cascade_index, c0_size);
-
-    int avg_dirs_count = prev_cascade_size.dirs_count / cascade_size.dirs_count;
-
-    vec4 merged_avg_interval = vec4(0.0f);
     
-    //logica de merge
+    float angular = pow(2.0, in_CascadeIndex);
+    vec2 linear = vec2(in_CascadeLinear * pow(2.0, in_CascadeIndex));
+    vec2 size = (ivec2(512) * ivec2(1, viewport_size.y) / ivec2(1, viewport_size.x)) / angular;
+    vec2 probe = mod(floor(coord), size);
+    vec2 raypos = floor(gl_FragCoord.xy * angular);
+    float index = raypos.x + (angular* raypos.y);
+    float offset = (GetC0IntervalLength(viewport_size) * (1.0 - pow(4.0, in_CascadeIndex))) / (1.0 - 4.0);
+    float range = GetC0IntervalLength(viewport_size) * pow(4.0, in_CascadeIndex);
+    range += length(vec2(in_CascadeLinear * pow(2.0, in_CascadeIndex + 1.0)));
+    float scale = length((vec2(512) * ivec2(1, viewport_size.y) / ivec2(1, viewport_size.x)));
+    
+    return probe_info(angular * angular, linear, size, probe, index, offset, range, scale); // Output probe information struct.
+}
 
-    for(int dir_number = 0; dir_number < avg_dirs_count ; dir_number++)
+vec4 raymarch(vec2 point, float theta, probe_info info) 
+{
+    vec2 texel = 1.0 / iResolution.xy;              // convertir coordenadas pixel a espacio de pantalla UV
+    vec2 delta = vec2(cos(theta), -sin(theta));     // componente del rayo para moverlo a la direccion de theta
+    vec2 ray = (point + (delta * info.offset)) * texel; // Origen del rayo  
+
+    for(float i = 0.0, df = 0.0, rd = 0.0; i < info.range; i++)
     {
-        int prev_dir_index = probe_location.dir_index * avg_dirs_count + dir_number;
-        vec2 ray_dir = GetProbeDir(float(prev_dir_index), prev_cascade_size.dirs_count);
+        df = texture(iChannel1, ray).r;             //obtener la distacioa calculada en el shader pass anterior
+        rd += df * info.scale;                      // suma de distancia total, escalado distancia UV a coordenada de pixel
+        ray += (delta * df * info.scale * texel);   //mover el rayo
 
-        vec4 merged_inteval = CastMergedIntervalBilinearFix(screen_pos, ray_dir, interval_length, prev_cascade_index, prev_dir_index);
-
-        merged_avg_interval += merged_inteval / float(avg_dirs_count);
+        if (rd >= info.range || floor(ray) != vec2(0.0)) // si se sale de los limites, no hit
+            break;
+        if (df <= 0.0001 && rd <= 0.0001 && in_CascadeIndex != 0) return vec4(0.0); // emitir luz solo en la superficie 
+        if (df < 0.0001) return vec4(tosrgb(texture(iChannel1, ray).gba), 0.0);  // si hay hit, devolver la radiacia
     }
-    fragColor = merged_avg_interval;
-    return fragColor;
+    return vec4(0.0,0.0,0.0,1.0);
+}
+
+vec4 merge(vec4 rinfo, float index, probe_info pinfo)
+{
+    ivec2 viewport_size = textureSize(iChannel1, 0);
+
+    if (rinfo.a == 0.0 || in_CascadeIndex >= nCascades - 1.0)
+        return vec4(rinfo.rgb, 1.0 - rinfo.a);
+    
+    float angularN1 = pow(2.0, in_CascadeIndex + 1.0);
+    vec2 sizeN1 = pinfo.size * 0.5;
+    vec2 probeN1 = vec2(mod(index, angularN1), floor(index/ angularN1)) * sizeN1;
+    vec2 interpUVN1 = pinfo.probe * 0.5;
+    vec2 clampedUVN1 = max(vec2(1.0), min(interpUVN1, sizeN1 - 1.0));
+    vec2 probeUVN1 = probeN1 + clampedUVN1 + 0.25;
+
+    // vec2 probe_res = (ivec2(512) * ivec2(1, viewport_size.y) / ivec2(1, viewport_size.x));
+    // float size = probe_res.x * probe_res.y;
+
+    vec4 interpolated = texture(iChannel1, probeUVN1 * (1.0 / (ivec2(512) * ivec2(1, viewport_size.y) / ivec2(1, viewport_size.x))));
+    return rinfo + interpolated.gbar;															// Return original radiance input and merge with lookup sample.
 }
 
 void main() {
-    float size = float(textureSize(iChannel0, 0).x); // Assuming cubemap faces are square
-    vec2 uv = (gl_FragCoord.xy / size) * 2.0 - 1.0;    
-    
-    // Determine ray direction based on which face we're rendering
-    vec3 ray_dir;
-    switch (faceIndex) {
-        case 0: ray_dir = vec3(+1.0, -uv.y, -uv.x); break; // right
-        case 1: ray_dir = vec3(-1.0, -uv.y, +uv.x); break; // left
-        case 2: ray_dir = vec3(+uv.x, +1.0, +uv.y); break; // up
-        case 3: ray_dir = vec3(+uv.x, -1.0, -uv.y); break; // down
-        case 4: ray_dir = vec3(+uv.x, -uv.y, +1.0); break; // front
-        case 5: ray_dir = vec3(-uv.x, -uv.y, -1.0); break; // back
+    ivec2 viewport_size = textureSize(iChannel1, 0);
+    probe_info pinfo = cascadeTexelInfo(floor(gl_FragCoord.xy * (ivec2(512) * ivec2(1, viewport_size.y) / ivec2(1, viewport_size.x))));
+    vec2 origin = (pinfo.probe + 0.5) * pinfo.linear;
+    float preavg_index = pinfo.index * 4.0;
+    float theta_scalar = TAU / (pinfo.angular * 4.0);
+
+    for(float i = 0.0; i < 4.0; i++)
+    {
+        float index = preavg_index + float(i);
+        float theta = (index + 0.5) * theta_scalar;
+        vec4 rinfo = raymarch(origin, theta, pinfo);
+        FragColor = merge(rinfo, index, pinfo) * 0.25;
     }
-    ray_dir = normalize(ray_dir);
-    
-    // Call your existing mainCubemap function
-    vec4 result;
-    result = mainCubemap(gl_FragCoord.xy, vec3(0.0), ray_dir);
-    FragColor = result;
+
+    if (in_CascadeIndex == 0.0)
+        FragColor = vec4(pow(FragColor.rgb, vec3(1.0 / 2.2)), 1.0);
+
+    // vec2 uv = gl_FragCoord.xy / iResolution.xy;
+    // FragColor = texture(iChannel1, uv);
+    //FragColor = vec4(0.1,0.7,0.,1.0);
 }
