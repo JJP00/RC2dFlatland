@@ -54,9 +54,9 @@ int main(void)
 
     // glEnable(GL_DEPTH_TEST);
 
-    Shader distaceProgram("../resources/vertex/shader.vert", "../resources/fragment/distance.frag", "../resources/Common.glsl");
-    Shader RCProgram("../resources/vertex/shader.vert", "../resources/fragment/radiancecascade.frag", "../resources/Common.glsl");
-    Shader shaderProgram("../resources/vertex/shader.vert", "../resources/fragment/shader.frag", "../resources/Common.glsl");
+    Shader distaceProgram("./resources/vertex/shader.vert", "./resources/fragment/distance.frag", "./resources/Common.glsl");
+    Shader RCProgram("./resources/vertex/shader.vert", "./resources/fragment/radiancecascade.frag", "./resources/Common.glsl");
+    Shader shaderProgram("./resources/vertex/shader.vert", "./resources/fragment/shader.frag", "./resources/Common.glsl");
 
     float vertices[] = {
         1.0f, 1.0f, 0.0f,   // top right
@@ -238,11 +238,10 @@ int main(void)
 
         // pass 2 ping pong render
 
-        for (int i = 6; i >= 0; i--)
+        for (int i = 6 - 1; i >= 0; i--)
         {
             glBindFramebuffer(GL_FRAMEBUFFER, writeFBO);
             glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
-            glClear(GL_COLOR_BUFFER_BIT);
 
             RCProgram.use();
 

@@ -22,7 +22,7 @@ void main() {
     // Determinar el SDF mínimo (la esfera más cercana)
     sd = min(min(sd_center, sd_moving),sd_mouse);
 
-    vec3 color_center = vec3(5.); // Rojo para el círculo central
+    vec3 color_center = vec3(5.0); // Rojo para el círculo central
     vec3 color_mouse  = vec3(0.); // Verde para el círculo del ratón
     vec3 color_moving = vec3(0.);           // Gris para el círculo en movimiento
 
