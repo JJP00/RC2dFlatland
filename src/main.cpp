@@ -213,6 +213,11 @@ int main(void)
         {
             glBindTexture(GL_TEXTURE_2D, iChannel1);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
+            glBindTexture(GL_TEXTURE_2D, readTex);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
+            glBindTexture(GL_TEXTURE_2D, writeTex);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
+
             SCR_HEIGHT_PREV = SCR_HEIGHT;
             SCR_WIDTH_PREV = SCR_WIDTH;
             glBindTexture(GL_TEXTURE_2D, 0);
