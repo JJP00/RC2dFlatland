@@ -20,6 +20,7 @@ ivec2 in_CascadeExtent = ivec2(iResolution.xy / in_CascadeLinear);
 #define TAU 6.283185
 
 uniform sampler2D iChannel1;    // r = distancia, gba = radiancia
+uniform sampler2D readTex;      // la textura del paso anterior
 
 vec3 tosrgb(vec3 color) { 
     return pow(color, vec3(2.2)); 
@@ -56,8 +57,8 @@ vec4 raymarch(vec2 point, float theta, probe_info info)
     for(float i = 0.0, df = 0.0, rd = 0.0; i < info.range; i++)
     {
         df = texture(iChannel1, ray).r;             //obtener la distacioa calculada en el shader pass anterior
-        rd += df * info.scale;                      // suma de distancia total, escalado distancia UV a coordenada de pixel
-        ray += (delta * df * info.scale * texel);   //mover el rayo
+        rd += df;                      // suma de distancia total, escalado distancia UV a coordenada de pixel
+        ray += (delta * df * texel);   //mover el rayo
 
         if (rd >= info.range || floor(ray) != vec2(0.0)) // si se sale de los limites, no hit
             break;
@@ -78,8 +79,8 @@ vec4 merge(vec4 rinfo, float index, probe_info pinfo)
     vec2 interpUVN1 = (pinfo.probe * 0.5) + 0.25;
     vec2 clampedUVN1 = max(vec2(1.0), min(interpUVN1, sizeN1 - 1.0));
     vec2 probeUVN1 = probeN1 + clampedUVN1;
-    vec4 interpolated = texture(iChannel1, probeUVN1 * (1.0 / in_CascadeExtent));
-    return rinfo + vec4(interpolated.gba, 1.0);															// Return original radiance input and merge with lookup sample.
+    vec4 interpolated = texture(readTex, probeUVN1 * (1.0 / in_CascadeExtent));
+    return rinfo + vec4(interpolated);															// Return original radiance input and merge with lookup sample.
 }
 
 void main() {

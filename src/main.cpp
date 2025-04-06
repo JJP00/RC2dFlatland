@@ -245,6 +245,10 @@ int main(void)
 
             RCProgram.use();
 
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, readTex);
+            RCProgram.setInt("readTex", 0); // paso anterior
+
             glActiveTexture(GL_TEXTURE1);
             glBindTexture(GL_TEXTURE_2D, iChannel1);
             RCProgram.setInt("iChannel1", 1); // distacia y radiancia
@@ -255,9 +259,6 @@ int main(void)
             RCProgram.setVec3("iMouse", mouse);
 
             RCProgram.setFloat("in_CascadeIndex", float(i));
-
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, readTex);
 
             drawscreen(VAO);
 

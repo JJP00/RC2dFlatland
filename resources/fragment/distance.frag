@@ -22,8 +22,8 @@ void main() {
     // Determinar el SDF mínimo (la esfera más cercana)
     sd = min(min(sd_center, sd_moving),sd_mouse);
 
-    vec3 color_center = vec3(5.0); // Rojo para el círculo central
-    vec3 color_mouse  = vec3(0.); // Verde para el círculo del ratón
+    vec3 color_center = vec3(1.0,1.0,1.0); // Rojo para el círculo central
+    vec3 color_mouse  = vec3(0.0,0.0,0.0); // Verde para el círculo del ratón
     vec3 color_moving = vec3(0.);           // Gris para el círculo en movimiento
 
     // Determinar el color del píxel actual
@@ -35,7 +35,9 @@ void main() {
         emissivity = color_moving;
     }
 
+    float normalized_sd = sd / length(iResolution.xy);
+
     // Aplicar emisividad solo al círculo central
     //emissivity = (sd == sd_center) ? vec3(8.0) : vec3(0.0);
-    FragColor = vec4(sd, emissivity);
+    FragColor = vec4(sd , emissivity);
 }
