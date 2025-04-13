@@ -1,6 +1,10 @@
 {
     "cSpell.words": [
-        "glfw"
+        "glfw",
+        "raymarch",
+        "raypos",
+        "texel",
+        "tosrgb"
     ],
     "files.associations": {
         "ostream": "cpp",
