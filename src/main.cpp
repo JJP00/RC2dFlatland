@@ -103,7 +103,7 @@ int main(void)
     // ---------------------------------------------------------------------------------------------
 
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS); // Optional but recommended for cubemaps
-    unsigned int iChannel1, iChannel0, FBO, depthRenderbuffer, cubemapFBO;
+    unsigned int iChannel1, iChannel0, FBO;
 
     glGenTextures(1, &iChannel1); // textura ichannel1 para calcular distacia y radiancia
     glBindTexture(GL_TEXTURE_2D, iChannel1);
@@ -143,47 +143,6 @@ int main(void)
     glBindFramebuffer(GL_FRAMEBUFFER, writeFBO);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, writeTex, 0);
 
-    // // cubemap
-
-    // // 1. Create Framebuffer
-    // glGenFramebuffers(1, &cubemapFBO);
-    // glBindFramebuffer(GL_FRAMEBUFFER, cubemapFBO);
-
-    // // 2. Create and Bind Cubemap Texture
-    // glGenTextures(1, &iChannel0);
-    // glBindTexture(GL_TEXTURE_CUBE_MAP, iChannel0);
-
-    // int cubemapSize = 2048; // Example resolution
-    // // 3. Allocate memory for all six faces
-    // glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RGBA16F, cubemapSize, cubemapSize, 0, GL_RGBA, GL_FLOAT, NULL);
-    // glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, GL_RGBA16F, cubemapSize, cubemapSize, 0, GL_RGBA, GL_FLOAT, NULL);
-    // glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, GL_RGBA16F, cubemapSize, cubemapSize, 0, GL_RGBA, GL_FLOAT, NULL);
-    // glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, GL_RGBA16F, cubemapSize, cubemapSize, 0, GL_RGBA, GL_FLOAT, NULL);
-    // glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGBA16F, cubemapSize, cubemapSize, 0, GL_RGBA, GL_FLOAT, NULL);
-    // glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, GL_RGBA16F, cubemapSize, cubemapSize, 0, GL_RGBA, GL_FLOAT, NULL);
-    // // 4. Set texture parameters
-
-    // glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    // glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    // glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    // glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    // glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-
-    // // 5. Attach the cubemap texture to the framebuffer
-
-    // glFramebufferTexture(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, iChannel0, 0);
-
-    // static const GLuint draw_buffers[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT5};
-    // glDrawBuffers(6, draw_buffers);
-
-    // // 8. Check Framebuffer Completeness
-    // GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-    // if (status != GL_FRAMEBUFFER_COMPLETE)
-    // {
-    //     std::cout << "Cubemap framebuffer is not complete! Error: " << status << std::endl;
-    // }
-
-    // 9. Unbind Framebuffer
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     while (!glfwWindowShouldClose(ventana))
@@ -300,9 +259,14 @@ int main(void)
     glDeleteBuffers(1, &VBO);
     glDeleteBuffers(1, &EBO);
     glDeleteFramebuffers(1, &FBO);
+    glDeleteFramebuffers(1, &readFBO);
+    glDeleteFramebuffers(1, &writeFBO);
+    RCProgram.deleteProgram();
     distaceProgram.deleteProgram();
     shaderProgram.deleteProgram();
     glDeleteTextures(1, &iChannel1);
+    glDeleteTextures(1, &writeTex);
+    glDeleteTextures(1, &readTex);
 
     glfwTerminate();
     return 0;
