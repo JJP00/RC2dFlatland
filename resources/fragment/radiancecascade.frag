@@ -14,7 +14,7 @@ uniform vec3 iMouse;                // mouse pixel coords. xy: current (if MLB d
 
 uniform float in_CascadeIndex;
 float in_CascadeLinear = 1.;
-float in_CascadeInterval = 1.;
+float in_CascadeInterval = 2.;
 ivec2 in_CascadeExtent = ivec2(iResolution.xy / in_CascadeLinear);
 
 #define TAU 6.283185

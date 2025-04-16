@@ -152,6 +152,7 @@ int main(void)
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
+        // std::cout << deltaTime * 1000.0 << std::endl;
 
         // input
         // -----
