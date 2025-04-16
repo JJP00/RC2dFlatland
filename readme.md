@@ -20,7 +20,7 @@ El proyecto de Radiance cascade se va ha dejar en este punto, implementado ya la
 
 En la siguiente figura muestro un experimento frecuente cuando se implementa RC.
 
-<img src="Resultados\RC_bilinearFix_Pinhole.png" width=640 height=480>
+![image](https://raw.githubusercontent.com/JJP00/RC2dFlatland/refs/heads/main/Resultados/RC_bilinearFix_Pinhole.png)
 
 ## Enlaces y referencias
 
@@ -61,7 +61,7 @@ I will leave this Radiance cascade project at this point, I already implemented 
 
 In the next figure, it shows a common experiment when implementing RC.
 
-<img src="Resultados\RC_bilinearFix_Pinhole.png" width=640 height=480>
+![image](https://raw.githubusercontent.com/JJP00/RC2dFlatland/refs/heads/main/Resultados/RC_bilinearFix_Pinhole.png)
 
 ## Links and references
 
