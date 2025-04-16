@@ -44,7 +44,7 @@ void getBoxCoord(float centX, float centY, out vec2 box_a, out vec2 box_b)
 
     // 4. Calcular puntos finales del eje (ahora son fijos)
     box_a = boxCenter - boxDir * boxLength * 0.0; // Punto inferior del eje
-    box_b = boxCenter + boxDir * boxLength * -1.9; // Punto superior del eje
+    box_b = boxCenter + boxDir * boxLength * -1.7; // Punto superior del eje
 }
 
 void main() {
@@ -92,11 +92,11 @@ void main() {
 
     float sd_box7 = sdOrientedBox(gl_FragCoord.xy, box_a, box_b, 15.); // Usar el grosor total aquí, la función lo divide por 2
 
-    getBoxCoord(12.0, 0.0, box_a, box_b);
+    getBoxCoord(10., 0.0, box_a, box_b);
 
     float sd_box8 = sdOrientedBox(gl_FragCoord.xy, box_a, box_b, 15.); // Usar el grosor total aquí, la función lo divide por 2
 
-    getBoxCoord(12.0, 2, box_a, box_b);
+    getBoxCoord(10., 1.8, box_a, box_b);
 
     float sd_box9 = sdOrientedBox(gl_FragCoord.xy, box_a, box_b, 15.); // Usar el grosor total aquí, la función lo divide por 2
 
