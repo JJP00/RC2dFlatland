@@ -48,8 +48,6 @@ The result of the previous pass is read and processed by the current pass so tha
 
 Finally, in the **main.frag** I draw on screen the last pass of the shader.
 
-Translated with DeepL.com (free version)
-
 ## Controls
 
 - R: recompile the shaders
